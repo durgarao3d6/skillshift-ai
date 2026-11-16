@@ -36,4 +36,4 @@ Implementation reviewed, relevant automated checks pass, auth/tenant isolation c
 
 ## Operating the backlog
 
-`backlog/tasks.csv` is the source of planned tasks; statuses start as Planned. Assign people during kickoff. Estimates are not deadlines. Import into a tracker if desired; GitHub issues have not been created automatically. Use one issue per task ID and include dependencies and acceptance criteria from the CSV. Discovery may change the backlog; record scope changes in an ADR.
+`backlog/tasks.csv` is the source of planned tasks; statuses track milestone progress; In progress does not mean release criteria are met. Assign people during kickoff. Estimates are not deadlines. Import into a tracker if desired; GitHub issues have not been created automatically. Use one issue per task ID and include dependencies and acceptance criteria from the CSV. Discovery may change the backlog; record scope changes in an ADR.

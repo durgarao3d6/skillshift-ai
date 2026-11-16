@@ -1,0 +1,38 @@
+name: Application checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: skillshift
+          POSTGRES_PASSWORD: skillshift
+          POSTGRES_DB: skillshift
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skillshift"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://skillshift:skillshift@localhost:5432/skillshift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/migrate.mjs
+      - run: npm test
+        env:
+          RUN_DB_TESTS: 'true'
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

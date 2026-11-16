@@ -1,8 +1,8 @@
 id,title,priority,suggested_owner,engineering_person_days,depends_on,requirements,acceptance_criteria,status
 T01,Discovery and pilot definition,P0,Product + domain lead,5,,R1-R8,"Conduct 3 buyer and 7 employee interviews; map five roles; record two partner decisions, rubric and pilot constraints.",Planned
 T02,Identity tenancy and authorisation foundation,P0,Backend,6,T01,R8,OIDC login; role/resource authorisation; transaction-scoped forced RLS; cross-tenant denial tests pass.,Planned
-T03,Domain schema and versioning,P0,Backend,4,T02,R1-R8,"Migrations create same-tenant FKs, immutable revisions, audit/outbox tables and seed taxonomy; rollback procedure reviewed.",Planned
-T04,CSV inventory import,P0,Full stack,6,T03,R1,Preview reports row errors; limits enforced; confirm atomic; duplicate digest/external IDs do not duplicate records; exports formula-safe.,Planned
+T03,Domain schema and versioning,P0,Backend,4,T02,R1-R8,"Migrations create same-tenant FKs, immutable revisions, audit/outbox tables and seed taxonomy; rollback procedure reviewed.",In progress (development foundation only)
+T04,CSV inventory import,P0,Full stack,6,T03,R1,Preview reports row errors; limits enforced; confirm atomic; duplicate digest/external IDs do not duplicate records; exports formula-safe.,In progress (development foundation only)
 T05,Employee review and corrections,P0,Full stack,5,T04,R6,Employees review own tasks; authorised corrections create versions; stale writes rejected and dependent results flagged.,Planned
 T06,Queue worker and AI adapter,P0,Backend/AI,7,T05,R2,Outbox recovers publish failure; duplicate jobs safe; bounded retries/dead letters; validated de-identified output; token quota and outage fallback exercised.,Planned
 T07,Assessment review and benchmark,P0,AI + domain lead,6,T06,R2,Five-role labelled benchmark meets agreed thresholds; explanations/provenance displayed; uncertainty routed to review; overrides audited.,Planned
@@ -13,6 +13,6 @@ T11,Manager dashboard and pilot metrics,P0,Frontend/data,5,T10,R5,Assigned-team 
 T12,Privacy retention and deletion,P0,Backend/security,5,T03 T10,R8,Approved retention configured; export/deletion traverses derived records and objects; backup restoration reapplies deletion; audit policy documented.,Planned
 T13,Security and AI abuse testing,P0,Security/QA,5,T06 T10,R2 R8,"Cross-tenant IDs, URLs, exports, malicious CSV/uploads and prompt injection covered; no unresolved high/critical findings.",Planned
 T14,End-to-end accessibility and load checks,P0,QA + engineering,5,T11 T12,R1-R8,Employee-to-manager-to-evidence journey passes; WCAG 2.2 AA checks and assumed load/SLO measurements recorded; gaps resolved.,Planned
-T15,CI infrastructure and operations,P0,Platform,6,T02,R8,"IaC and environments configured; CI checks/builds pass; secrets external; restore, rollback, queue/provider outage drills meet accepted targets.",Planned
+T15,CI infrastructure and operations,P0,Platform,6,T02,R8,"IaC and environments configured; CI checks/builds pass; secrets external; restore, rollback, queue/provider outage drills meet accepted targets.",In progress (development foundation only)
 T16,Pilot onboarding and release readiness,P0,Product + engineering,3,T07 T13 T14 T15,R1-R8,All release gates signed off; two partner tenants onboarded; five-role dry run and reviewer training complete.,Planned
 T17,Pilot outcome evaluation,P1,Product + L&D,3,T16,R1-R8,"After 30-day observation, publish acceptance/completion/verification, cohort exclusions, model errors, cost/task and buyer payment decision.",Planned

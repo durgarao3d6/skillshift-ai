@@ -19,3 +19,7 @@ Help employees and managers agree task maps, identify development needs, approve
 ## Repository use
 
 Work through the backlog in dependency order. Resolve the pilot-blocking decisions before production data ingestion. Suggested future layout: `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `infra`, `tests`. These are intended boundaries, not implemented services.
+
+## Development has started
+
+The first development slice adds a Next.js workspace, CSV validation/import and PostgreSQL inventory. See [setup and deployment](docs/05-development-and-deployment.md) for local commands, Neon/Vercel options and the development-only security boundary. Production authentication and tenant isolation are not implemented yet.
