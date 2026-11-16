@@ -77,9 +77,24 @@ test(
         ).rows[0].n,
         4,
       );
+      assert.equal(health.failures, 3);
+      await f.admin.query('UPDATE jobs SET available_at=now() WHERE tenant_id=$1', [f.tenantId]);
+      await runBatch(f.tenantId);
+      assert.equal(calls, 3);
+      const paused = (
+        await f.admin.query('SELECT * FROM provider_health WHERE tenant_id=$1', [f.tenantId])
+      ).rows[0];
+      assert.equal(paused.open_until.toISOString(), health.open_until.toISOString());
+      assert.equal(paused.failures, 3);
+      const attempts = (
+        await f.admin.query('SELECT max(attempts)::int n FROM jobs WHERE tenant_id=$1', [
+          f.tenantId,
+        ])
+      ).rows[0].n;
+      assert.equal(attempts, 1);
       fail = false;
       await f.admin.query(
-        'UPDATE provider_health SET open_until=NULL,failures=0 WHERE tenant_id=$1',
+        "UPDATE provider_health SET open_until=now()-interval '1 second' WHERE tenant_id=$1",
         [f.tenantId],
       );
       await f.admin.query('UPDATE jobs SET available_at=now() WHERE tenant_id=$1', [f.tenantId]);
@@ -105,6 +120,14 @@ test(
           )
         ).rows[0].status,
         'failed',
+      );
+      assert.equal(
+        (
+          await f.admin.query('SELECT failures FROM provider_health WHERE tenant_id=$1', [
+            f.tenantId,
+          ])
+        ).rows[0].failures,
+        0,
       );
       delete process.env.OPENAI_API_KEY;
       const manualTask = await makeTask();

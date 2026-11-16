@@ -63,7 +63,9 @@ async function assess(job: any) {
       return task;
     const health = (await db.query('SELECT open_until FROM provider_health')).rows[0];
     if (health?.open_until && new Date(health.open_until).getTime() > Date.now())
-      throw new Error('Provider circuit is open');
+      throw Object.assign(new Error('Provider circuit is open'), {
+        deferUntil: new Date(health.open_until),
+      });
     const charge =
       process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL
         ? Math.ceil(task.task_description.length / 4) + 700
@@ -79,7 +81,13 @@ async function assess(job: any) {
     return task;
   });
   if (!input) return null;
-  return { input, result: await classifyTask(input.task_description) };
+  try {
+    return { input, result: await classifyTask(input.task_description) };
+  } catch (error) {
+    throw Object.assign(error instanceof Error ? error : new Error('Provider request failed'), {
+      providerFailure: true,
+    });
+  }
 }
 export async function runOne(tenantId: string) {
   await dispatchOutbox(tenantId);
@@ -152,7 +160,16 @@ export async function runOne(tenantId: string) {
     });
   } catch (error) {
     await transaction(tenantId, async (db) => {
-      if (job.kind === 'assess')
+      const deferred = (error as { deferUntil?: Date })?.deferUntil;
+      if (deferred) {
+        await db.query(
+          "UPDATE jobs SET status='retry_wait',attempts=GREATEST(0,attempts-1),available_at=$2,last_error='Provider circuit is open',lease_until=NULL WHERE id=$1 AND lease_token=$3 AND status='running'",
+          [job.id, deferred, job.lease_token],
+        );
+        await audit(db, null, tenantId, 'job.deferred', job.id);
+        return;
+      }
+      if (job.kind === 'assess' && (error as { providerFailure?: boolean })?.providerFailure)
         await db.query(
           "INSERT INTO provider_health(tenant_id,failures) VALUES($1,1) ON CONFLICT(tenant_id) DO UPDATE SET failures=provider_health.failures+1,open_until=CASE WHEN provider_health.failures+1>=3 THEN now()+interval '5 minutes' ELSE provider_health.open_until END",
           [tenantId],
