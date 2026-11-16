@@ -17,23 +17,27 @@ Validation date: 16 November 2026. All data used for checks is synthetic. This r
 
 The local environment's normal inner-container npm request failed; using the documented session CA as a BuildKit secret restored package installation with TLS verification enabled. The rootless Docker VFS build then ran out of disk while copying the dependency layer. Unused validation build cache was removed; source and PostgreSQL volumes were preserved. No session proxy CA or credentials are tracked in this repository.
 
-The production Dockerfile is validated in the `containers` GitHub Actions job on a standard runner: web and worker images build; the standalone server file passes Node syntax validation; image users are asserted to be non-root. This does not claim live production deployment or real S3/ClamAV/provider integration.
+The production Dockerfile passed the `containers` [GitHub Actions run](https://github.com/durgarao3d6/skillshift-ai/actions/runs/43797627315) on a standard runner: web and worker images build; the standalone server file passes Node syntax validation; image users are asserted to be non-root. This does not claim live production deployment or real S3/ClamAV/provider integration.
 
-## Load observations — target remains open
+## Load observations
 
 The harness seeds two active tenants, each with 1,000 synthetic employees and 20 tasks per employee, and issues inventory requests from 50 distinct concurrent users. It explicitly reports cold/warm phases and exits nonzero when the proposed 500 ms p95 target is missed. It measures the in-process API plus PostgreSQL, excluding public HTTP/browser latency. Use a fresh isolated `*_load` database for each reproducible run.
 
-Latest recorded run with pool size 20:
+After reducing query round trips, caching scoped aggregate counts and reserving asynchronous commits for ephemeral rate counters, a fresh reference profile passed:
 
-| Measure                      | Observed              |
-| ---------------------------- | --------------------- |
-| Warmup requests / failures   | 50 / 0                |
-| Cold p95                     | 899 ms                |
-| Measured requests / failures | 500 / 0               |
-| Measured p50 / p95           | 550 / 694 ms          |
-| Proposed ordinary-read p95   | <500 ms — **not met** |
+| Measure                      | Ten-connection reference profile |
+| ---------------------------- | -------------------------------- |
+| Warmup requests / failures   | 50 / 0                           |
+| Cold p95                     | 480 ms                           |
+| Measured requests / failures | 500 / 0                          |
+| Measured p50 / p95           | 191 / 251 ms                     |
+| Proposed ordinary-read p95   | <500 ms — met for this profile   |
 
-Earlier runs varied with pool size and shared-environment load; no result is presented as a production SLO guarantee. A two-second, tenant/scope-keyed aggregate-count cache and fewer authentication round trips improved the initial slow summary path, but the release performance gate remains open. The default pool remains five connections per instance to avoid assuming a free-tier connection budget. Tune against the selected deployment and total connection limits, then rerun HTTP-level load tests before promising pilot capacity. The 100-task live-provider batch target has not been validated without an approved provider.
+The standalone five-connection run still missed the target: cold p95 740 ms, measured p50/p95 549/732 ms, zero failed requests. Results vary with connection capacity and shared-environment load. The conservative runtime default remains five connections per instance; `DB_POOL_MAX=10` selects the reference profile only when the deployment's total connection budget permits it. Additional instances, a pooler and the real host must be evaluated together. Passing the reference profile does not claim all configurations or public-network traffic meet the target.
+
+The rate-counter transaction may lose its latest short-lived counts after a database crash. Session creation/revocation, employee records, approvals, token budgets, audit events and all other domain changes retain synchronous commits; tests assert the domain transaction setting. Recent request counters are not business records or provider token quotas.
+
+The deployed HTTP SLO and 100-task live-provider batch target remain open release gates, not fabricated performance results. Run `scripts/load-test.ts` only with `LOAD_TEST_CONFIRM_SYNTHETIC=YES` against an isolated database whose name contains `_load`.
 
 ## Backup/restore exercise
 

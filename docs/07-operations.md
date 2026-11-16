@@ -2,7 +2,7 @@
 
 ## Credentials and environments
 
-Keep dev, staging and production in separate databases/buckets/IdP clients. Migration credentials own the schema; runtime credentials must be non-owner, NOSUPERUSER and NOBYPASSRLS. Provision with `scripts/provision-role.mjs` after migrations. Do not grant runtime membership in privileged roles. The app checks role flags when each pooled connection is first used. Every request/job sets tenant context inside a transaction and clears it on commit/rollback.
+Keep dev, staging and production in separate databases/buckets/IdP clients. Migration credentials own the schema; runtime credentials must be non-owner, NOSUPERUSER and NOBYPASSRLS. Provision with `scripts/provision-role.mjs` after migrations. Do not grant runtime membership in privileged roles. The app checks role flags when each pooled connection is first used. Every request/job sets tenant context inside a transaction and clears it on commit/rollback. Only the authentication rate-counter transaction uses asynchronous commit; a crash can lose recent request counts. Sessions, approvals, token budgets, audit and other domain writes explicitly use synchronous commits.
 
 Use secret managers for runtime secrets, rotate session signing secrets to invalidate cookies, and revoke sessions/memberships when offboarding. Preserve `DELETION_HMAC_SECRET` separately and durably: changing it without migrating the ledger prevents restore-time deletion matching. Configure current provider contract, region, retention and training restrictions before setting `AI_DATA_PROCESSING_APPROVED=true`.
 

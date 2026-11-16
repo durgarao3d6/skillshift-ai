@@ -44,7 +44,7 @@ Retention sweeps are disabled until an administrator records an approved policy.
 
 `/api/auth/login`, `/callback`, `/logout`; authenticated `/api/imports` and `/api/inventory`; `/api/workspace/state`, `/inventory`, `/export`, `/report`, `/members`, `/evidence/{id}`, `/privacy/export`; POST actions cover tasks, assessments, skills, plans, activities, evidence, privacy requests, manager assignment, policy and job management. Schemas are in `lib/server/domain.ts` and adjacent modules. No request accepts a client-selected tenant ID for domain operations.
 
-Errors have a request ID and stable HTTP semantics: 401 authentication, 403 permission, 404 inaccessible resource, 409 stale/invalid workflow state, 413 size, 422 validation, 429 quota, 503 dependency failure. Unexpected errors log type and request ID, not task text, files or credentials.
+Errors have a request ID and stable HTTP semantics: 401 authentication, 403 permission, 404 inaccessible resource, 409 stale/invalid workflow state, 413 size, 422 validation, 429 quota, 503 dependency failure. Unexpected errors log type and request ID, not task text, files or credentials. Rate-limit metadata commits asynchronously; all domain transactions explicitly retain synchronous commits. The local ten-connection reference profile meets the proposed read target, while deployed capacity remains a release check.
 
 ## Boundaries of validation
 

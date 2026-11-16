@@ -69,6 +69,7 @@ export function sessionSecret() {
 export async function transaction<T>(
   tenantId: string,
   fn: (db: PoolClient) => Promise<T>,
+  options: { ephemeral?: boolean } = {},
 ): Promise<T> {
   if (!z.uuid().safeParse(tenantId).success) throw new HttpError(400, 'Invalid tenant ID.');
   const db = await pool().connect();
@@ -87,7 +88,9 @@ export async function transaction<T>(
     await db.query(
       "BEGIN; SELECT set_config('app.tenant_id'," +
         pg.escapeLiteral(tenantId) +
-        ",true); SET LOCAL statement_timeout='30s'; SET LOCAL lock_timeout='5s'",
+        ",true); SET LOCAL statement_timeout='30s'; SET LOCAL lock_timeout='5s'; SET LOCAL synchronous_commit='" +
+        (options.ephemeral ? 'off' : 'on') +
+        "'",
     );
     rollbackHooks.set(db, []);
     commitHooks.set(db, []);
@@ -164,36 +167,40 @@ export function assertOrigin(req: Request) {
 export async function withActor<T>(req: Request, fn: (db: PoolClient, actor: Actor) => Promise<T>) {
   if (!['GET', 'HEAD'].includes(req.method)) assertOrigin(req);
   const claims = await identity(req);
-  const actor = await transaction(claims.tenantId, async (db) => {
-    const member = (
-      await db.query(
-        `WITH member AS (
+  const actor = await transaction(
+    claims.tenantId,
+    async (db) => {
+      const member = (
+        await db.query(
+          `WITH member AS (
  SELECT m.*,u.display_name FROM memberships m JOIN app_users u ON u.id=m.user_id LEFT JOIN sessions s ON s.id=$2 AND s.user_id=m.user_id WHERE m.user_id=$1 AND m.active=true AND ($2::uuid IS NULL OR s.expires_at>now())
  ), rate AS (
  INSERT INTO request_limits(tenant_id,user_id,bucket) SELECT tenant_id,user_id,$3 FROM member ON CONFLICT(tenant_id,user_id,bucket) DO UPDATE SET requests=request_limits.requests+1 RETURNING requests
  ) SELECT member.*,rate.requests FROM member CROSS JOIN rate`,
-        [claims.userId, claims.sessionId, Math.floor(Date.now() / 60000)],
-      )
-    ).rows[0];
-    if (!member)
-      throw new HttpError(
-        claims.sessionId ? 401 : 403,
-        'Session expired or membership is inactive.',
-      );
-    const actor: Actor = {
-      tenantId: claims.tenantId,
-      userId: member.user_id,
-      role: member.role,
-      employeeId: member.employee_external_id,
-      displayName: member.display_name,
-    };
-    const limit = Number(process.env.REQUESTS_PER_MINUTE || 120);
-    if (!Number.isSafeInteger(limit) || limit < 1)
-      throw new HttpError(503, 'Invalid request rate configuration.');
-    if (member.requests > limit)
-      throw new HttpError(429, 'Request limit reached. Retry in a minute.');
-    return actor;
-  });
+          [claims.userId, claims.sessionId, Math.floor(Date.now() / 60000)],
+        )
+      ).rows[0];
+      if (!member)
+        throw new HttpError(
+          claims.sessionId ? 401 : 403,
+          'Session expired or membership is inactive.',
+        );
+      const actor: Actor = {
+        tenantId: claims.tenantId,
+        userId: member.user_id,
+        role: member.role,
+        employeeId: member.employee_external_id,
+        displayName: member.display_name,
+      };
+      const limit = Number(process.env.REQUESTS_PER_MINUTE || 120);
+      if (!Number.isSafeInteger(limit) || limit < 1)
+        throw new HttpError(503, 'Invalid request rate configuration.');
+      if (member.requests > limit)
+        throw new HttpError(429, 'Request limit reached. Retry in a minute.');
+      return actor;
+    },
+    { ephemeral: true },
+  ); // Only short-lived rate counters are written here; domain writes remain synchronous.
   return transaction(claims.tenantId, (db) => fn(db, actor));
 }
 export function roles(actor: Actor, ...allowed: Role[]) {

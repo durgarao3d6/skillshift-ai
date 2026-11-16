@@ -6,13 +6,13 @@ import assert from 'node:assert/strict';
 import { createServer, AddressInfo } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { fixture, dbTests } from './helpers';
-import { pool, transaction } from '../lib/server/core';
+import { pool, transaction, withActor } from '../lib/server/core';
 import { POST, GET } from '../app/api/workspace/[...path]/route';
 import { enqueue } from '../lib/server/domain';
 import { dispatchOutbox, runBatch, runOne, claimJob } from '../lib/server/worker';
 import { validateEvidence, scanClamAV, putPrivate } from '../lib/server/storage';
 test(
-  'security boundaries: resource IDs, private downloads, failed scans, leases and durable rate limiting',
+  'security boundaries: resource IDs, private downloads, failed scans, leases and shared rate limiting',
   { skip: !dbTests },
   async () => {
     const f = await fixture(),
@@ -84,6 +84,14 @@ test(
         (await f.admin.query('SELECT count(*)::int n FROM jobs WHERE id=$1', [outbox])).rows[0].n,
         1,
       );
+      const durable = await withActor(await f.request('hr', '/api/commit-check'), (db) =>
+        db.query('SHOW synchronous_commit'),
+      );
+      assert.equal(durable.rows[0].synchronous_commit, 'on');
+      const ephemeral = await transaction(f.tenantId, (db) => db.query('SHOW synchronous_commit'), {
+        ephemeral: true,
+      });
+      assert.equal(ephemeral.rows[0].synchronous_commit, 'off');
       // Failed actions still consume a rate slot because authentication/rate accounting commits separately.
       process.env.REQUESTS_PER_MINUTE = '1';
       await f.admin.query('DELETE FROM request_limits WHERE tenant_id=$1', [f.tenantId]);
