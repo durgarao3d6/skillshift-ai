@@ -1,25 +1,48 @@
-# SkillShift AI — Architecture and delivery plan
+# SkillShift AI
 
-Planning baseline, 15 November 2026. This repository contains PRD analysis, a high-level design (HLD), and an implementation backlog. It does not contain a working application.
+Human-reviewed workforce skills planning: map tasks, review AI exposure, identify development needs, approve a 30-day plan and verify skills through practical evidence. No automated layoffs, employee performance scoring or job-loss predictions.
 
-## Read in order
+The MVP implementation includes:
 
-1. [PRD analysis](docs/01-prd-analysis.md): scope, gaps, acceptance criteria and traceability.
-2. [High-level design](docs/02-hld.md): components, workflows, data, API, security and operations.
-3. [Delivery plan](docs/03-delivery-plan.md): phases, dependencies, estimates and release gates.
-4. [Architecture decisions](docs/04-decisions-and-risks.md): rationale, alternatives, risks and decisions needed.
-5. [Task backlog](backlog/tasks.csv): importable tasks with acceptance criteria and estimates.
+- OIDC login, revocable sessions, role/resource authorisation and forced PostgreSQL tenant isolation.
+- Atomic CSV preview/import/export, immutable task revisions and employee/manager reviews.
+- Durable outbox/jobs, optional approved AI provider, manual classification, retries, quotas and provenance.
+- Versioned skill targets, unknown-aware gaps, curated learning exercises and revision-bound manager approval.
+- Private evidence, malware quarantine, independent verification and scoped progress reporting.
+- Privacy export, deletion ledger replay, approved-policy retention, CI and container/operations configuration.
 
-[Original upload](source/original-brief.txt) is preserved for provenance. Its economic reporting is context, not verified architectural evidence. Only PRD 01 is present, despite the brief announcing three PRDs. Proposed engineering choices and targets are assumptions pending design-partner validation.
+Start with [development and deployment](docs/05-development-and-deployment.md). Progress and remaining release gates are recorded in [tasks.md](tasks.md). This is an implemented MVP awaiting production integration and pilot validation; checked engineering tasks do not imply customer approval or successful market validation.
 
-## Product boundaries
+## Run locally
 
-Help employees and managers agree task maps, identify development needs, approve 30-day plans, and verify learning evidence. Exclude automated layoffs, employee performance scoring, and predictions that particular jobs will disappear. AI proposes; people review.
+Requires Node 22+, npm and Docker/PostgreSQL 17.
 
-## Repository use
+```sh
+npm ci
+cp .env.example .env
+# Set matching runtime DB credentials and separate random secrets in .env.
+docker compose up -d
+npm run db:migrate
+npm run db:provision-role
+npm run db:seed
+npm run dev
+```
 
-Work through the backlog in dependency order. Resolve the pilot-blocking decisions before production data ingestion. Suggested future layout: `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `infra`, `tests`. These are intended boundaries, not implemented services.
+Open http://localhost:3000 and switch development personas to exercise the workflow. Production never accepts demo personas. Start `npm run worker` to process jobs; evidence requires a configured malware scanner. Missing AI configuration uses explicit manual review.
 
-## Development has started
+## Documentation
 
-The first development slice adds a Next.js workspace, CSV validation/import and PostgreSQL inventory. See [setup and deployment](docs/05-development-and-deployment.md) for local commands, Neon/Vercel options and the development-only security boundary. Production authentication and tenant isolation are not implemented yet.
+| Document                                                           | Purpose                                                           |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| [Task tracker](tasks.md)                                           | Completed implementation and open release/business work           |
+| [PRD analysis](docs/01-prd-analysis.md)                            | Scope, requirements, acceptance criteria and unresolved decisions |
+| [Original HLD](docs/02-hld.md)                                     | Proposed architecture baseline                                    |
+| [Delivery plan](docs/03-delivery-plan.md)                          | Estimates, phases and gates                                       |
+| [Architecture decisions](docs/04-decisions-and-risks.md)           | Original trade-offs and risk register                             |
+| [Setup/deployment](docs/05-development-and-deployment.md)          | Local commands, Neon/Vercel and self-hosting                      |
+| [Implemented architecture](docs/06-implementation-architecture.md) | Actual modules, permissions, invariants and boundaries            |
+| [Operations](docs/07-operations.md)                                | Worker, secrets, monitoring, backup, rollback and privacy         |
+| [Validation evidence](docs/08-validation.md)                       | Checks run and what remains unverified                            |
+| [Importable backlog](backlog/tasks.csv)                            | Original T01–T17 requirements and current status                  |
+
+The [original upload](source/original-brief.txt) contains only SkillShift AI's full PRD, despite announcing three products. Its economic reporting is context, not verified input to assessments. Buyer demand, expert rubrics, production service terms and the 30-day pilot remain external validation work.

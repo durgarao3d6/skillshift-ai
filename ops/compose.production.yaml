@@ -1,0 +1,33 @@
+# Use managed PostgreSQL / S3 or add separately operated private services.
+services:
+  web:
+    build:
+      context: ..
+      target: web
+    env_file: ../.env.production
+    restart: unless-stopped
+    ports: ['127.0.0.1:3000:3000']
+    read_only: true
+    tmpfs: [/tmp, /app/apps/web/.next/cache]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+  worker:
+    build:
+      context: ..
+      target: worker
+    env_file: ../.env.production
+    environment:
+      CLAMD_HOST: clamav
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    depends_on: [clamav]
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes: ['clamav-signatures:/var/lib/clamav']
+    # No published scanner port. Scan traffic stays on the private Compose network.
+volumes:
+  clamav-signatures:

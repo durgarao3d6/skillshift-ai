@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 .next/
 *.tsbuildinfo
+.private-storage/
+**/.private-storage/
+artifacts/

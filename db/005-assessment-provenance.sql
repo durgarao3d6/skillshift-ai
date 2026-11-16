@@ -1,0 +1,13 @@
+BEGIN;
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS suggested_category text;
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS input_hash text;
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS output_hash text;
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS tokens integer NOT NULL DEFAULT 0 CHECK(tokens>=0);
+CREATE UNIQUE INDEX IF NOT EXISTS assessment_tenant_id ON assessments(tenant_id,id);
+CREATE TABLE IF NOT EXISTS assessment_reviews(id uuid PRIMARY KEY,tenant_id uuid NOT NULL,assessment_id uuid NOT NULL,reviewer_id uuid NOT NULL,category text NOT NULL,reason text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),FOREIGN KEY(tenant_id,assessment_id) REFERENCES assessments(tenant_id,id) ON DELETE CASCADE);
+ALTER TABLE assessment_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessment_reviews FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON assessment_reviews USING(tenant_id=nullif(current_setting('app.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=nullif(current_setting('app.tenant_id',true),'')::uuid);
+CREATE TRIGGER assessment_review_immutable BEFORE UPDATE ON assessment_reviews FOR EACH ROW EXECUTE FUNCTION immutable_snapshot();
+INSERT INTO schema_migrations(version) VALUES('005-assessment-provenance');
+COMMIT;

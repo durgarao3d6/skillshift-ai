@@ -1,1 +1,32 @@
-{"name":"skillshift-ai","private":true,"workspaces":["apps/web"],"scripts":{"dev":"npm run dev -w apps/web","build":"npm run build -w apps/web","typecheck":"npm run typecheck -w apps/web","test":"npm run test -w apps/web","db:migrate":"node --env-file=.env scripts/migrate.mjs"}}
+{
+  "name": "skillshift-ai",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "node --env-file=.env scripts/dev.mjs",
+    "build": "npm run build -w apps/web",
+    "typecheck": "npm run typecheck -w apps/web",
+    "test": "npm run test -w apps/web",
+    "db:migrate": "node --env-file=.env scripts/migrate.mjs",
+    "db:provision-role": "node --env-file=.env scripts/provision-role.mjs",
+    "db:seed": "node --env-file=.env --import tsx scripts/seed-demo.ts",
+    "worker": "node --env-file=.env --import tsx scripts/runtime.ts worker",
+    "worker:once": "node --env-file=.env --import tsx scripts/runtime.ts worker --once",
+    "evaluate": "node --env-file=.env --import tsx scripts/evaluate-assessments.ts",
+    "health": "node --env-file=.env --import tsx scripts/runtime.ts health",
+    "deletions:reapply": "node --env-file=.env --import tsx scripts/runtime.ts reapply",
+    "test:load": "node --env-file=.env --import tsx scripts/load-test.ts",
+    "db:backup": "node --env-file=.env scripts/backup.mjs",
+    "db:restore": "node --env-file=.env scripts/restore.mjs",
+    "format:check": "prettier --check \"apps/web/{app,components,lib,tests}/**/*.{ts,tsx,css}\" \"scripts/*.{ts,mjs}\" apps/web/next.config.ts"
+  },
+  "type": "module",
+  "devDependencies": {
+    "prettier": "^3.10.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

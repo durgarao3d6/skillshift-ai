@@ -21,18 +21,32 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://skillshift:skillshift@localhost:5432/skillshift
+      APP_DATABASE_URL: postgresql://skillshift_app:skillshift_test@localhost:5432/skillshift
+      APP_DATABASE_PASSWORD: skillshift_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: node scripts/migrate.mjs
+      - run: node scripts/provision-role.mjs
       - run: npm test
         env:
           RUN_DB_TESTS: 'true'
+      - run: npm run format:check
+      - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build --target web -t skillshift-web:ci .
+      - run: docker run --rm --entrypoint node skillshift-web:ci --check apps/web/server.js
+      - run: test "$(docker image inspect skillshift-web:ci --format '{{.Config.User}}')" = app
+      - run: docker build --target worker -t skillshift-worker:ci .
+      - run: test "$(docker image inspect skillshift-worker:ci --format '{{.Config.User}}')" = node

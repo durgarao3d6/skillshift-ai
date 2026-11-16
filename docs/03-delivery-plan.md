@@ -6,15 +6,15 @@ Discovery is a one-week experiment from the PRD. Engineering estimate is a propo
 
 ## Phases and gates
 
-| Phase | Timing | Deliverables | Exit gate |
-|---|---|---|---|
-| Discovery | Week 1 | T01, buyer interviews, five-role prototype, draft rubric | Two design partners or explicit decision to revise hypothesis |
-| Foundation | Build weeks 1–2 | T02–T03, T15 baseline pipeline | Tenant isolation, identity and privacy policy agreed before real data |
-| Inventory and assessment | Build weeks 3–4 | T04–T07 | Reviewed task revisions, safe async assessment and labelled benchmark |
-| Skills and learning | Build weeks 5–6 | T08–T09 | Reproducible gap calculation; revision-safe approved plans |
-| Evidence and reporting | Build weeks 7–8 | T10–T12 | Verified skills separate from completion; access and deletion work |
-| Pilot readiness | Build weeks 9–10 | T13–T16 | Security, quality, accessibility, load and recovery gates pass |
-| Pilot measurement | Next 30 days plus review | T17 | Report acceptance, completion, quality and buyer willingness to pay |
+| Phase                    | Timing                   | Deliverables                                             | Exit gate                                                             |
+| ------------------------ | ------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| Discovery                | Week 1                   | T01, buyer interviews, five-role prototype, draft rubric | Two design partners or explicit decision to revise hypothesis         |
+| Foundation               | Build weeks 1–2          | T02–T03, T15 baseline pipeline                           | Tenant isolation, identity and privacy policy agreed before real data |
+| Inventory and assessment | Build weeks 3–4          | T04–T07                                                  | Reviewed task revisions, safe async assessment and labelled benchmark |
+| Skills and learning      | Build weeks 5–6          | T08–T09                                                  | Reproducible gap calculation; revision-safe approved plans            |
+| Evidence and reporting   | Build weeks 7–8          | T10–T12                                                  | Verified skills separate from completion; access and deletion work    |
+| Pilot readiness          | Build weeks 9–10         | T13–T16                                                  | Security, quality, accessibility, load and recovery gates pass        |
+| Pilot measurement        | Next 30 days plus review | T17                                                      | Report acceptance, completion, quality and buyer willingness to pay   |
 
 Timing assumes parallel frontend/backend work where dependencies allow; task IDs define the actual precedence. Critical dependency chain: T01 → T02 → T03 → T04 → T05 → T06 → T07 → T08 → T09 → T10 → T11 → T14 → T16 → T17. T15 begins after T02 and hardens throughout. T12 and T13 can progress alongside feature completion after their prerequisites.
 
@@ -36,4 +36,4 @@ Implementation reviewed, relevant automated checks pass, auth/tenant isolation c
 
 ## Operating the backlog
 
-`backlog/tasks.csv` is the source of planned tasks; statuses track milestone progress; In progress does not mean release criteria are met. Assign people during kickoff. Estimates are not deadlines. Import into a tracker if desired; GitHub issues have not been created automatically. Use one issue per task ID and include dependencies and acceptance criteria from the CSV. Discovery may change the backlog; record scope changes in an ADR.
+`backlog/tasks.csv` is the source of planned tasks; statuses distinguish finished engineering, implemented work awaiting external validation, and open release gates. The current implementation tracker is [tasks.md](../tasks.md). Assign people during kickoff. Estimates are not deadlines. Import into a tracker if desired; GitHub issues have not been created automatically. Use one issue per task ID and include dependencies and acceptance criteria from the CSV. Discovery may change the backlog; record scope changes in an ADR.

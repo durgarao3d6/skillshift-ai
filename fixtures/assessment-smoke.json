@@ -1,0 +1,12 @@
+{
+  "status": "Synthetic smoke cases; not expert-approved labels",
+  "rubricVersion": "rubric-1",
+  "expertApproved": false,
+  "cases": [
+    {"role":"Software engineer","task":"Write integration tests and explain boundary coverage.","tentativeExpected":"assist"},
+    {"role":"Support specialist","task":"Resolve an unusual customer incident and communicate the decision.","tentativeExpected":"assist"},
+    {"role":"Data analyst","task":"Run a repeatable format validation on a synthetic CSV.","tentativeExpected":"partially_automate"},
+    {"role":"Product manager","task":"Agree a strategic trade-off with competing stakeholders.","tentativeExpected":"human_led"},
+    {"role":"UX designer","task":"Evaluate usability with users and interpret conflicting feedback.","tentativeExpected":"human_led"}
+  ]
+}

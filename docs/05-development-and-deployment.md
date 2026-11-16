@@ -1,49 +1,73 @@
-# Development milestone 1
+# Development and deployment
 
-Implemented a Next.js/TypeScript workspace, responsive dashboard, CSV preview and confirmation, and PostgreSQL-backed inventory. This is a single-tenant development slice, not a production workforce platform. T02 (OIDC/RLS) remains unfinished, T03/T04 are partial; discovery and product decisions are still open. No AI classifications, learning plans or verified skills are fabricated.
+The MVP now includes authentication, task and assessment reviews, skills gaps, revisioned learning plans, evidence, reporting and privacy workflows. See [implemented architecture](06-implementation-architecture.md), [operations](07-operations.md) and [tasks](../tasks.md).
 
-## Local setup
+## Local development
 
-Requires Node 22+ and Docker (or an existing PostgreSQL database).
+Requires Node 22+, npm and Docker or PostgreSQL 17.
 
 ```sh
 npm ci
 cp .env.example .env
-cp .env.example apps/web/.env.local
+# Edit APP_DATABASE_PASSWORD and the password in APP_DATABASE_URL to match.
+# Replace SESSION_SECRET and DELETION_HMAC_SECRET with separate random secrets.
 docker compose up -d
 npm run db:migrate
+npm run db:provision-role
+npm run db:seed
 npm run dev
 ```
 
-Open http://localhost:3000. Choose sample data, preview, then confirm import. Database availability is reported separately from the page rendering. Restarting preserves inventory in the PostgreSQL volume. Re-importing the identical file is idempotent; existing employee/task IDs in changed files are skipped without overwriting data. Files with invalid rows cannot be confirmed. Preview returns at most 50 rows; inventory shows the most recent 100 and search covers only those records. Task review is not yet implemented.
+Open http://localhost:3000. Development mode offers HR, employee, manager, reviewer and admin personas. The seed contains five synthetic roles and assigns their manager. Demo personas are disabled unconditionally in production. The dev launcher reads the root `.env` and removes schema-owner credentials before starting Next.js; do not copy the owner URL into Vercel or web/worker runtime configuration.
 
-All inventory APIs fail closed unless `SKILLSHIFT_DEMO_MODE=true`. This flag is not authentication. Do not expose this milestone publicly with the flag enabled or upload real employee data. Use an authenticated deployment preview for demonstrations. No application roles, production tenant access controls, audit trail or rate limiting are implemented yet. Migrations are idempotent for this initial schema; backup before future migration changes.
+Try the full workflow:
 
-## Free-tier deployment proposal
+1. Employee accepts or corrects their task in Inventory.
+2. Employee queues an assessment; HR runs the development job button or `npm run worker:once`.
+3. Manager reviews the assessment. Missing provider configuration explicitly requires manual classification.
+4. Employee self-reports proficiency, generates a draft and waits for assigned-manager approval.
+5. Manager approves a start date; employee completes exercises and submits text/PDF evidence.
+6. Run a configured ClamAV scanner and worker. The manager downloads clean evidence and records a rubric decision.
+7. Compare activity completion and verified skills in Team report. Test privacy export/deletion using synthetic data.
 
-Recommended first slice: Vercel (Next.js UI + API) and Neon (PostgreSQL). A separate backend host is unnecessary for these short database/API requests. The `pg` pool uses a maximum of three connections per function instance; use Neon's pooled application URL and review total connection limits. Use the direct URL for migrations when recommended by the provider. Keep the URL's required TLS parameters and never disable certificate verification.
+Start a persistent worker with `npm run worker`. Configure `CLAMD_HOST` and a real scanner to process uploads; no bypass switch declares files clean. For local standalone ClamAV, run it on a private Docker network or bind its port to loopback and keep it off public networks. Without a scanner, evidence remains quarantined.
 
-1. Create a Neon database in the chosen region. Keep real employee data out until privacy/provider agreements are complete.
-2. Apply `db/001-inventory.sql` in Neon's SQL editor or run `npm run db:migrate` with the database URL in your local `.env`.
-3. Import this GitHub repository into Vercel. Set **Root Directory** to `apps/web`; framework preset Next.js. Retain access to workspace files outside the root if Vercel requests this for the npm workspace. Build command: `npm run build`; output directory: Next.js default.
-4. Set `DATABASE_URL` in Vercel environment variables. For an access-protected synthetic-data preview only, set `SKILLSHIFT_DEMO_MODE=true`. Otherwise leave it unset and the data APIs will remain disabled.
-5. Enable available deployment authentication before exposing a demo. If access protection is unavailable on your plan, keep the demo local rather than enabling unauthenticated inventory endpoints.
-6. Redeploy after changing environment variables. Run schema migration explicitly; builds never mutate the database.
+## Checks
 
-Vercel request body and function duration limits may be lower than the app's 10 MB / 5,000-row local limits. Use small sample files on Vercel; bulk imports require direct private object uploads and a background worker before production. Transactional row-by-row import is intentionally simple and must be benchmarked or replaced with batched insertion for larger pilots.
+```sh
+npm run typecheck
+npm test
+npm run build
+npm audit
+```
 
-### Other options
+Integration tests require `RUN_DB_TESTS=true`, the schema-owner `DATABASE_URL` for isolated fixtures and restricted `APP_DATABASE_URL` for application queries. CI provisions PostgreSQL, migrations and the app role, then runs the complete suite. Tests create synthetic tenants; use a disposable test database. Static accessibility tests exclude contrast/layout and require follow-up browser review.
 
-| Service | Use | Main consideration |
-| --- | --- | --- |
-| Neon | Managed PostgreSQL | Free-tier compute/storage and idle behaviour vary; pooled connections recommended |
-| Supabase | Managed PostgreSQL plus optional auth/storage | Free quotas and inactivity policies; adopting its auth requires a separate implementation |
-| Vercel | Next.js frontend and short API routes | Verify current Hobby commercial-use eligibility and quotas |
-| Render | Separate Node API | Free services may sleep; check worker availability separately |
-| Coolify + PostgreSQL + Caddy | Open-source self-hosted deployment | Software free, but hardware/VPS, backups and operations are your responsibility |
+`npm run evaluate` runs five synthetic role smoke cases. They are not expert labels and cannot pass the release quality gate. An approved provider is optional; set `AI_DATA_PROCESSING_APPROVED=true` only after the customer approves provider terms and task-text processing. Regex redaction removes common identifiers but cannot guarantee anonymisation of arbitrary prose; do not send unreviewed personal/confidential text.
 
-These are proposed choices, not verified current prices or account entitlements. A free plan is not an availability, backup or long-term cost guarantee. No external hosting project has been created or deployed by this milestone.
+## Neon + Vercel + worker
 
-## Next milestone
+Recommended hosted layout: Neon PostgreSQL, Vercel for Next.js UI/API, private S3-compatible storage, and a persistent Node worker plus ClamAV on a host you control. Vercel alone does not run the durable worker. Render or another worker host can run it if its plan supports persistent workers and the scanner's memory needs. Free web-service tiers may sleep; do not assume free worker hosting.
 
-Implement OIDC, scoped membership and transaction-local PostgreSQL RLS on a non-owner application role, with cross-tenant integration tests. Then add task revisions, employee review and auditable import metadata. Only after those foundations should the assessment worker and provider integration begin. Introduce a standalone NestJS API when the worker/integration workload justifies it; this first UI/API slice uses Next.js route handlers to simplify free-tier hosting (a deliberate staging adjustment to the HLD).
+1. Create a PostgreSQL database in the customer-approved region. Run migrations with its schema-owner URL, then provision a separate runtime role. On a provider without role-creation permission, create an equivalent non-owner NOSUPERUSER/NOBYPASSRLS role through its admin UI and grant only the tables in `scripts/provision-role.mjs`.
+2. Use the pooled runtime URL as `APP_DATABASE_URL`. Preserve required TLS options; never disable certificate verification. Keep the owner URL only on a trusted migration workstation/CI secret, never in web/worker runtime.
+3. Import this repository into Vercel; root directory `apps/web`, Next.js preset, default output and `npm run build`. Enable access to workspace files outside the root if prompted by the npm-workspace configuration.
+4. Configure `APP_DATABASE_URL`, `SESSION_SECRET`, `DELETION_HMAC_SECRET`, `APP_URL`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, optional client secret and private storage credentials. Register the exact HTTPS `/api/auth/callback` URI with your IdP. Production never accepts demo identities.
+5. Provision each tenant/user through `scripts/provision-user.mjs`; use the OIDC subject, not email as identity. HR assigns managers/reviewers and role targets in the app.
+6. Give web/worker access to a private encrypted S3 bucket with public access blocked. Restrict IAM to required prefixes and actions. Keep deletion ledger storage and its HMAC secret independent of DB backups, encrypted and durable.
+7. Deploy `Dockerfile` target `worker` with runtime secrets, `WORKER_TENANTS` and a private ClamAV endpoint. Deploy target `web` if self-hosting instead of Vercel. `ops/compose.production.yaml` and `ops/Caddyfile` provide self-hosting examples.
+8. Run the smoke workflow, health checks and restore procedure before adding real employees. Configure retention only after customer approval.
+
+Vercel request limits can be below local 10 MB CSV / 5 MB file limits, particularly after JSON/base64 overhead. Use small uploads on that host; larger files require a platform with suitable limits or a future direct-upload flow. Import is batched in PostgreSQL and never runs AI synchronously. Provider assessment batches run on the worker.
+
+## Free-tier choices
+
+| Service                            | Suitable use                                  | Check before choosing                                                                                           |
+| ---------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Neon                               | Managed PostgreSQL                            | Current storage/compute quotas, pooling, idle behaviour and backup coverage                                     |
+| Supabase                           | Managed PostgreSQL plus optional auth/storage | Current free quotas/inactivity; this implementation uses generic OIDC and S3 interfaces, not Supabase auth APIs |
+| Vercel                             | Next.js UI and short API requests             | Current Hobby commercial-use terms, execution/body limits and quotas                                            |
+| Render                             | Separate worker/API host where supported      | Persistent worker eligibility, sleeping policies and scanner resources                                          |
+| Coolify, PostgreSQL, Caddy, ClamAV | Open-source self-hosted stack                 | Software is free; hardware/VPS, backups and operations may cost money                                           |
+
+These are deployment options, not verified current pricing or entitlements. No external hosting account or service has been provisioned by this development work. A real employee pilot should not depend on an unverified claim that every required service is free.
